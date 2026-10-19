@@ -1,0 +1,44 @@
+from __future__ import annotations
+
+import uuid
+
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.types import CHAR, TypeDecorator
+
+
+class GUID(TypeDecorator):
+    """UUID on PostgreSQL, string elsewhere.
+
+    SQLite tests also store non-UUID token user ids such as ``1``. Those values
+    are returned unchanged so callers can coerce them.
+    """
+
+    impl = CHAR
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(PG_UUID(as_uuid=True))
+        return dialect.type_descriptor(CHAR(36))
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if dialect.name == "postgresql":
+            if isinstance(value, uuid.UUID):
+                return value
+            return uuid.UUID(str(value))
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return str(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        if isinstance(value, uuid.UUID):
+            return value
+        text = str(value).strip()
+        try:
+            return uuid.UUID(text)
+        except ValueError:
+            return text
