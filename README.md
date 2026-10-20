@@ -186,18 +186,24 @@ curl -sS http://127.0.0.1:8000/jwks
 `keys` の中に `kid`、`n`、`e` などが表示されます。秘密鍵は表示されません。
 
 ## いま何が起きたか
-
-```mermaid
-%%{init: {"flowchart": {"htmlLabels": false}} }%%
-flowchart TD
-  signup["signup<br/>未確認ユーザーを作る<br/>確認トークンは一度きり"]
-  confirm["confirm<br/>確認トークンを消費<br/>mail_verified を true"]
-  login["login<br/>Cookie を3つ発行<br/>access / refresh / csrf"]
-  me["me<br/>access_token を検証<br/>ユーザーを返す"]
-  refresh["refresh<br/>refresh_token を消費<br/>Cookie を更新"]
-  logout["logout<br/>DB のトークンを失効<br/>Cookie を削除"]
-
-  signup --> confirm --> login --> me --> refresh --> logout
+```text
+signup
+  └─ 未確認ユーザーと、一度きりの確認トークンを作る
+       ↓
+confirm
+  └─ 確認トークンを消費し、mail_verified を true にする
+       ↓
+login
+  └─ access_token / refresh_token / csrf_token を Cookie に入れる
+       ↓
+me
+  └─ access_token の署名と期限を確かめ、ユーザーを返す
+       ↓
+refresh
+  └─ refresh_token を一度だけ消費し、3つの Cookie を新しくする
+       ↓
+logout
+  └─ DB 上のトークンを失効させ、3つの Cookie を消す
 ```
 
 Cookie を新しく発行するのは login と refresh です。signup の確認トークンは、メールの代わりにサーバログへ出しています。
