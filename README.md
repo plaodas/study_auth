@@ -46,7 +46,19 @@ pip install -r requirements.txt -r requirements-dev.txt
 
 これらの値を理解してからでないと起動できない、ということはありません。まずはスクリプトに任せて動かしてみてください。ただし、`secret/`、`*.pem`、`.env` は秘密を含むので Git にコミットしません。
 
-`.env` がすでにある場合、スクリプトは上書きしません。RSA 鍵ファイルはスクリプトを実行するたびに作り直されます。
+`.env` は手で埋める必要はありません。上の `./scripts/bootstrap_dev_secrets.sh` を実行したとき、リポジトリ直下に `.env` が無ければ、スクリプトが新規作成します。中身は次のキーです。
+
+- `JWT_PRIVATE_KEY_PATH` — `secret/dev_priv.pem` の絶対パス
+- `JWT_PUBLIC_KEY_PATH` — `secret/dev_pub.pem` の絶対パス
+- `SECRET_KEY` — リフレッシュトークンの HMAC 用。`openssl rand` で作る（OpenSSL が無ければ Python の `secrets`）
+- `CSRF_SECRET` — CSRF トークンの署名用。同じ方法で作る
+- `ACCESS_TOKEN_EXPIRE_MINUTES=15`
+- `REFRESH_TOKEN_EXPIRE_DAYS=7`
+- `DATABASE_URL` — このリポジトリの `study_auth.db` を指す SQLite の URL
+
+作られた `.env` の権限は `600` です。すでに `.env` があるときは上書きしません。値を入れ直すときは `.env` を削除してから、同じスクリプトをもう一度実行します。`secret/dev_priv.pem` と `secret/dev_pub.pem` は、スクリプトを実行するたびに作り直されます。
+
+キー名だけの見本は [`.env.example`](.env.example) です。値は空なので、これを `.env` にコピーしても秘密は入りません。起動に使うのは、スクリプトが書いた `.env` です。
 
 ### サーバを起動する
 
@@ -175,24 +187,16 @@ curl -sS http://127.0.0.1:8000/jwks
 
 ## いま何が起きたか
 
-```text
-signup
-  └─ 未確認ユーザーと、一度きりの確認トークンを作る
-       ↓
-confirm
-  └─ 確認トークンを消費し、mail_verified を true にする
-       ↓
-login
-  └─ access_token / refresh_token / csrf_token を Cookie に入れる
-       ↓
-me
-  └─ access_token の署名と期限を確かめ、ユーザーを返す
-       ↓
-refresh
-  └─ refresh_token を一度だけ消費し、3つの Cookie を新しくする
-       ↓
-logout
-  └─ DB 上のトークンを失効させ、3つの Cookie を消す
+```mermaid
+flowchart TD
+  signup["signup: 未確認ユーザーと、一度きりの確認トークンを作る"]
+  confirm["confirm: 確認トークンを消費し、mail_verified を true にする"]
+  login["login: access_token、refresh_token、csrf_token を Cookie に入れる"]
+  me["me: access_token の署名と期限を確かめ、ユーザーを返す"]
+  refresh["refresh: refresh_token を一度だけ消費し、3つの Cookie を新しくする"]
+  logout["logout: DB 上のトークンを失効させ、3つの Cookie を消す"]
+
+  signup --> confirm --> login --> me --> refresh --> logout
 ```
 
 Cookie を新しく発行するのは login と refresh です。signup の確認トークンは、メールの代わりにサーバログへ出しています。
