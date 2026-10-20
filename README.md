@@ -188,13 +188,14 @@ curl -sS http://127.0.0.1:8000/jwks
 ## いま何が起きたか
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": false}} }%%
 flowchart TD
-  signup["signup: 未確認ユーザーと、一度きりの確認トークンを作る"]
-  confirm["confirm: 確認トークンを消費し、mail_verified を true にする"]
-  login["login: access_token、refresh_token、csrf_token を Cookie に入れる"]
-  me["me: access_token の署名と期限を確かめ、ユーザーを返す"]
-  refresh["refresh: refresh_token を一度だけ消費し、3つの Cookie を新しくする"]
-  logout["logout: DB 上のトークンを失効させ、3つの Cookie を消す"]
+  signup["signup<br/>未確認ユーザーを作る<br/>確認トークンは一度きり"]
+  confirm["confirm<br/>確認トークンを消費<br/>mail_verified を true"]
+  login["login<br/>Cookie を3つ発行<br/>access / refresh / csrf"]
+  me["me<br/>access_token を検証<br/>ユーザーを返す"]
+  refresh["refresh<br/>refresh_token を消費<br/>Cookie を更新"]
+  logout["logout<br/>DB のトークンを失効<br/>Cookie を削除"]
 
   signup --> confirm --> login --> me --> refresh --> logout
 ```
